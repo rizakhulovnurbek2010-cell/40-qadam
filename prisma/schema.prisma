@@ -1,0 +1,86 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         String     @default("MANAGER") // "ADMIN" | "MANAGER"
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  contacts     Contact[]  @relation("AssignedContacts")
+  deals        Deal[]     @relation("OwnerDeals")
+  activities   Activity[]
+
+  @@map("users")
+}
+
+model Contact {
+  id           String     @id @default(cuid())
+  fullName     String
+  email        String?
+  phone        String
+  company      String?
+  status       String     @default("LEAD") // "LEAD" | "ACTIVE" | "INACTIVE" | "CLOSED"
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  assignedToId String?
+  assignedTo   User?      @relation("AssignedContacts", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  deals        Deal[]
+  activities   Activity[]
+
+  @@map("contacts")
+}
+
+model Deal {
+  id                String    @id @default(cuid())
+  title             String
+  value             Float     @default(0.0)
+  currency          String    @default("USD")
+  stage             String    @default("LEAD") // "LEAD" | "CONTACTED" | "PROPOSAL" | "NEGOTIATION" | "WON" | "LOST"
+  expectedCloseDate DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  contactId         String
+  contact           Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  ownerId           String?
+  owner             User?     @relation("OwnerDeals", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  activities        Activity[]
+
+  @@map("deals")
+}
+
+model Activity {
+  id          String    @id @default(cuid())
+  type        String    @default("NOTE") // "CALL" | "MEETING" | "NOTE"
+  content     String
+  dueDate     DateTime?
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  contactId   String
+  contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  dealId      String?
+  deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
